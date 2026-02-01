@@ -31,6 +31,9 @@ const SPOTIFY_TOKEN_URL = "https://accounts.spotify.com/api/token";
 const TOKEN_PATH = path.join(__dirname, "token.json");
 
 const SCOPES = [
+  "streaming",
+  "user-read-email",
+  "user-read-private",
   "user-read-playback-state",
   "user-modify-playback-state",
   "user-read-currently-playing",
@@ -218,6 +221,19 @@ app.get("/status", async (req, res) => {
   });
 });
 
+app.get("/token", async (req, res) => {
+  try {
+    const accessToken = await ensureAccessToken();
+    if (!accessToken) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    return res.json({ access_token: accessToken });
+  } catch (error) {
+    log("Token error:", error.message);
+    return res.status(500).json({ error: "Token fetch failed" });
+  }
+});
+
 app.delete("/token", async (req, res) => {
   try {
     await fs.unlink(TOKEN_PATH);
@@ -233,6 +249,11 @@ app.get("/now-playing", async (req, res) => {
   if (response.status === 204) {
     return res.json({ is_playing: false });
   }
+  return res.status(response.status).json(response.data);
+});
+
+app.get("/player", async (req, res) => {
+  const response = await spotifyFetch("/me/player");
   return res.status(response.status).json(response.data);
 });
 
@@ -298,50 +319,102 @@ app.put("/transfer", async (req, res) => {
 });
 
 app.put("/play", async (req, res) => {
-  const response = await spotifyFetch("/me/player/play", { method: "PUT" });
+  const { deviceId } = req.body || {};
+  const deviceParam = deviceId ? `?device_id=${encodeURIComponent(deviceId)}` : "";
+  const response = await spotifyFetch(`/me/player/play${deviceParam}`, {
+    method: "PUT",
+  });
   return res.status(response.status).json(response.data);
 });
 
 app.put("/pause", async (req, res) => {
-  const response = await spotifyFetch("/me/player/pause", { method: "PUT" });
+  const { deviceId } = req.body || {};
+  const deviceParam = deviceId ? `?device_id=${encodeURIComponent(deviceId)}` : "";
+  const response = await spotifyFetch(`/me/player/pause${deviceParam}`, {
+    method: "PUT",
+  });
   return res.status(response.status).json(response.data);
 });
 
+// Attempt to "wake" a device by transferring playback and then issuing play.
+app.put("/wake", async (req, res) => {
+  const { deviceId } = req.body || {};
+  if (!deviceId) {
+    return res.status(400).json({ error: "deviceId required" });
+  }
+
+  const transferResponse = await spotifyFetch("/me/player", {
+    method: "PUT",
+    body: JSON.stringify({
+      device_ids: [deviceId],
+      play: false,
+    }),
+  });
+
+  if (!transferResponse || transferResponse.status >= 400) {
+    return res.status(transferResponse.status).json(transferResponse.data);
+  }
+
+  const playResponse = await spotifyFetch(
+    `/me/player/play?device_id=${encodeURIComponent(deviceId)}`,
+    { method: "PUT" },
+  );
+  return res.status(playResponse.status).json(playResponse.data);
+});
+
 app.post("/next", async (req, res) => {
-  const response = await spotifyFetch("/me/player/next", { method: "POST" });
+  const { deviceId } = req.body || {};
+  const deviceParam = deviceId ? `?device_id=${encodeURIComponent(deviceId)}` : "";
+  const response = await spotifyFetch(`/me/player/next${deviceParam}`, {
+    method: "POST",
+  });
   return res.status(response.status).json(response.data);
 });
 
 app.post("/previous", async (req, res) => {
-  const response = await spotifyFetch("/me/player/previous", {
+  const { deviceId } = req.body || {};
+  const deviceParam = deviceId ? `?device_id=${encodeURIComponent(deviceId)}` : "";
+  const response = await spotifyFetch(`/me/player/previous${deviceParam}`, {
     method: "POST",
   });
   return res.status(response.status).json(response.data);
 });
 
 app.put("/shuffle", async (req, res) => {
-  const { state } = req.body || {};
-  const response = await spotifyFetch(`/me/player/shuffle?state=${Boolean(state)}`, {
-    method: "PUT",
-  });
+  const { state, deviceId } = req.body || {};
+  const deviceParam = deviceId ? `&device_id=${encodeURIComponent(deviceId)}` : "";
+  const response = await spotifyFetch(
+    `/me/player/shuffle?state=${Boolean(state)}${deviceParam}`,
+    {
+      method: "PUT",
+    },
+  );
   return res.status(response.status).json(response.data);
 });
 
 app.put("/repeat", async (req, res) => {
-  const { state } = req.body || {};
+  const { state, deviceId } = req.body || {};
   const mode = state || "off";
-  const response = await spotifyFetch(`/me/player/repeat?state=${mode}`, {
-    method: "PUT",
-  });
+  const deviceParam = deviceId ? `&device_id=${encodeURIComponent(deviceId)}` : "";
+  const response = await spotifyFetch(
+    `/me/player/repeat?state=${mode}${deviceParam}`,
+    {
+      method: "PUT",
+    },
+  );
   return res.status(response.status).json(response.data);
 });
 
 app.put("/volume", async (req, res) => {
-  const { volume } = req.body || {};
+  const { volume, deviceId } = req.body || {};
   const safeVolume = Math.max(0, Math.min(100, Number(volume ?? 50)));
-  const response = await spotifyFetch(`/me/player/volume?volume_percent=${safeVolume}`, {
-    method: "PUT",
-  });
+  const deviceParam = deviceId ? `&device_id=${encodeURIComponent(deviceId)}` : "";
+  const response = await spotifyFetch(
+    `/me/player/volume?volume_percent=${safeVolume}${deviceParam}`,
+    {
+      method: "PUT",
+    },
+  );
   return res.status(response.status).json(response.data);
 });
 

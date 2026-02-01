@@ -7,19 +7,34 @@ import NavBar from "./components/NavBar";
 import LogPanel from "./components/LogPanel";
 import { useIdleTimer } from "./hooks/useIdleTimer";
 import { useSpotify } from "./hooks/useSpotify";
+import { useWebPlayback } from "./hooks/useWebPlayback";
 import { useWeather } from "./hooks/useWeather";
 import { useLogs } from "./context/LogContext";
-import { apiDelete } from "./lib/api";
+import { apiDelete, apiPut } from "./lib/api";
 
 const IDLE_TIMEOUT_MS = Number(import.meta.env.VITE_IDLE_TIMEOUT_MS || 60000);
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:3001";
 
 const App = () => {
   const [activeScreen, setActiveScreen] = useState("player");
+  const [playbackTarget, setPlaybackTarget] = useState("iphone");
   const [now, setNow] = useState(new Date());
   const { toggleVisibility, addLog } = useLogs();
-  const { status, nowPlaying, queue, previous, artist, controls } =
-    useSpotify();
+  const webPlayback = useWebPlayback();
+  const {
+    status,
+    nowPlaying,
+    queue,
+    previous,
+    artist,
+    controls,
+    defaultDeviceId,
+    resolvedTargetDeviceId,
+    devices,
+  } = useSpotify({
+    playbackTarget,
+    targetDeviceId: webPlayback.deviceId,
+  });
   const weather = useWeather();
 
   useIdleTimer({
@@ -60,7 +75,35 @@ const App = () => {
     addLog("Token cache cleared.");
   };
 
-  const activeDeviceName = nowPlaying?.device?.name || "No device";
+  const defaultDeviceLabel =
+    import.meta.env.VITE_DEFAULT_DEVICE_NAME || "Default device";
+  const activeDeviceName = nowPlaying?.device?.name || null;
+  const isDefaultDeviceAvailable =
+    Boolean(defaultDeviceId) ||
+    activeDeviceName?.toLowerCase() === defaultDeviceLabel.toLowerCase();
+  const isMiniPlayerActive =
+    activeDeviceName?.toLowerCase() === "mini player";
+  const isIphoneActive =
+    activeDeviceName?.toLowerCase() === defaultDeviceLabel.toLowerCase();
+
+  useEffect(() => {
+    const transfer = async () => {
+      if (playbackTarget === "this" && webPlayback.deviceId) {
+        await apiPut("/transfer", { deviceId: webPlayback.deviceId });
+      }
+      if (playbackTarget === "iphone" && defaultDeviceId) {
+        await apiPut("/transfer", { deviceId: defaultDeviceId });
+      }
+    };
+    transfer();
+  }, [playbackTarget, webPlayback.deviceId, defaultDeviceId]);
+
+  const handleDeviceSelect = async (device) => {
+    if (!device?.id) return;
+    const isMiniPlayer = device.isMiniPlayer === true;
+    setPlaybackTarget(isMiniPlayer ? "this" : "iphone");
+    await apiPut("/transfer", { deviceId: device.id });
+  };
 
   const screen = useMemo(() => {
     if (activeScreen === "idle") {
@@ -85,6 +128,7 @@ const App = () => {
         previous={previous}
         artist={artist}
         controls={controls}
+        targetDeviceId={resolvedTargetDeviceId}
       />
     );
   }, [activeScreen, now, weather, previous, nowPlaying, queue, artist, controls]);
@@ -122,11 +166,21 @@ const App = () => {
           activeScreen={activeScreen}
           onNavigate={setActiveScreen}
           onToggleFullscreen={toggleFullscreen}
+          onToggleLogs={toggleVisibility}
           currentTimeLabel={now.toLocaleTimeString("en-US", {
             hour: "numeric",
             minute: "2-digit",
           })}
-          deviceName={activeDeviceName}
+          isDefaultDeviceAvailable={isDefaultDeviceAvailable}
+          defaultDeviceLabel={defaultDeviceLabel}
+          playbackTarget={playbackTarget}
+          onPlaybackTargetChange={setPlaybackTarget}
+          webPlaybackReady={Boolean(webPlayback.deviceId)}
+          isMiniPlayerActive={isMiniPlayerActive}
+          isIphoneActive={isIphoneActive}
+          activeDeviceName={activeDeviceName}
+          devices={devices}
+          onDeviceSelect={handleDeviceSelect}
         />
       </div>
       <LogPanel />

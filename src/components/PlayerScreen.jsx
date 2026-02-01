@@ -7,7 +7,6 @@ import {
   Shuffle,
   SkipBack,
   SkipForward,
-  Volume2,
 } from "lucide-react";
 import { formatMs } from "../lib/format";
 
@@ -18,15 +17,16 @@ const PlayerScreen = ({
   previous,
   artist,
   controls,
+  targetDeviceId,
 }) => {
   const track = nowPlaying?.item || null;
   const isPlaying = Boolean(nowPlaying?.is_playing);
   const durationMs = track?.duration_ms || 0;
   const [progressMs, setProgressMs] = useState(nowPlaying?.progress_ms || 0);
-  const volume = nowPlaying?.device?.volume_percent ?? 50;
   const remainingMs = Math.max(0, durationMs - progressMs);
   const shuffleState = nowPlaying?.shuffle_state || false;
   const repeatState = nowPlaying?.repeat_state || "off";
+  const deviceId = targetDeviceId || nowPlaying?.device?.id;
 
   useEffect(() => {
     setProgressMs(nowPlaying?.progress_ms || 0);
@@ -106,15 +106,17 @@ const PlayerScreen = ({
           </div>
 
           <div className="flex items-center justify-center gap-6 text-white">
-            <button onClick={() => controls.shuffle(!shuffleState)}>
+            <button onClick={() => controls.shuffle(!shuffleState, deviceId)}>
               <Shuffle className={`h-6 w-6 ${shuffleState ? "text-white" : "text-white/60"}`} />
             </button>
-            <button onClick={controls.previous}>
+            <button onClick={() => controls.previous(deviceId)}>
               <SkipBack className="h-8 w-8" />
             </button>
             <button
               className="flex h-16 w-16 items-center justify-center rounded-full border border-white/50"
-              onClick={isPlaying ? controls.pause : controls.play}
+              onClick={() =>
+                isPlaying ? controls.pause(deviceId) : controls.play(deviceId)
+              }
             >
               {isPlaying ? (
                 <Pause className="h-8 w-8" />
@@ -122,10 +124,17 @@ const PlayerScreen = ({
                 <Play className="h-8 w-8" />
               )}
             </button>
-            <button onClick={controls.next}>
+            <button onClick={() => controls.next(deviceId)}>
               <SkipForward className="h-8 w-8" />
             </button>
-            <button onClick={() => controls.repeat(repeatState === "off" ? "context" : "off")}>
+            <button
+              onClick={() =>
+                controls.repeat(
+                  repeatState === "off" ? "context" : "off",
+                  deviceId,
+                )
+              }
+            >
               <Repeat className={`h-6 w-6 ${repeatState !== "off" ? "text-white" : "text-white/60"}`} />
             </button>
             <button>
@@ -133,17 +142,6 @@ const PlayerScreen = ({
             </button>
           </div>
 
-          <div className="flex items-center justify-center gap-3 pt-5">
-            <Volume2 className="h-4 w-4 text-white/70" />
-            <input
-              type="range"
-              min="0"
-              max="100"
-              value={volume}
-              onChange={(event) => controls.volume(event.target.value)}
-              className="h-1 w-48 accent-white"
-            />
-          </div>
         </section>
         
         {/* Playlist Section */}

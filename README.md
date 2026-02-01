@@ -8,6 +8,7 @@ A lightweight Spotify mini player built with React, Tailwind CSS, and a small No
 - Auto-refresh Spotify tokens to avoid timeout
 - Auto-transfer playback to `Nicholas's iPhone` (fallback to active device)
 - Player, Idle, and Playlist (placeholder) screens with bottom navigation
+- Web Playback SDK mode to play directly in this app (always-available Connect device)
 - Idle screen shows time (12-hour with seconds), date, and Open-Meteo weather
 - Keyboard shortcut to toggle logs: `Ctrl + Shift + L`
 - Frameless + Electron-ready setup (packaging later)
@@ -19,6 +20,7 @@ A lightweight Spotify mini player built with React, Tailwind CSS, and a small No
 - Lucide icons
 - Open-Meteo (no key required)
 - Nodemon + concurrently (dev tooling)
+- Spotify Web Playback SDK
 
 ## Setup
 1) Copy the env template and fill in your values:
@@ -28,7 +30,7 @@ copy .env.example .env
 
 2) Update values in `.env`:
 - `SPOTIFY_CLIENT_ID` and `SPOTIFY_CLIENT_SECRET`
-- `SPOTIFY_REDIRECT_URI` set to `http://127.0.0.1:8888/callback`
+- `SPOTIFY_REDIRECT_URI` set to `http://127.0.0.1:3001/callback`
 - `SPOTIFY_DEVICE_NAME` set to `Nicholas's iPhone`
 - `OPEN_METEO_POSTAL_CODE` set to `M5J 2M4`
 
@@ -43,12 +45,15 @@ npm run dev
 ```
 
 5) Open the app and click **Login with Spotify**.
+6) If you used the app before, clear the token cache and re-login so new scopes apply.
 
 ## Notes
 - The local server runs on `http://127.0.0.1:3001`.
 - Vite dev server runs on `http://localhost:5173`.
 - Token cache is stored in `server/token.json` and can be cleared from the Idle screen.
+- Web Playback SDK requires Spotify Premium and updated scopes (re-login).
 
 ## Versions
+- 0.2.0: Added Web Playback SDK mode and playback target toggle.
 - 0.1.1: Removed BPM/audio features to avoid Spotify 403.
 - 0.1.0: Initial scaffold with Spotify auth, player layout, and idle screen.
