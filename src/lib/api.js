@@ -31,7 +31,11 @@ export const apiPut = async (path, body) => {
   return { status: response.status, data: await toJson(response) };
 };
 
-export const apiDelete = async (path) => {
-  const response = await fetch(`${API_BASE}${path}`, { method: "DELETE" });
+export const apiDelete = async (path, body) => {
+  const response = await fetch(`${API_BASE}${path}`, {
+    method: "DELETE",
+    headers: body ? { "Content-Type": "application/json" } : undefined,
+    body: body ? JSON.stringify(body) : undefined,
+  });
   return { status: response.status, data: await toJson(response) };
 };

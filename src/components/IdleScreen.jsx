@@ -1,4 +1,13 @@
-import { Cloud, CloudDrizzle, CloudFog, CloudLightning, CloudRain, CloudSnow, Sun } from "lucide-react";
+import {
+  Cloud,
+  CloudDrizzle,
+  CloudFog,
+  CloudLightning,
+  CloudRain,
+  CloudSnow,
+  Moon,
+  Sun,
+} from "lucide-react";
 import { formatDateLong, formatTime12h } from "../lib/format";
 
 const iconMap = {
@@ -9,6 +18,7 @@ const iconMap = {
   "cloud-rain": CloudRain,
   "cloud-snow": CloudSnow,
   "cloud-lightning": CloudLightning,
+  moon: Moon,
 };
 
 // Idle view with time/date/weather and last played track.

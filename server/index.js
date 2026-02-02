@@ -24,6 +24,9 @@ const LOGS_ENABLED = (process.env.LOGS_ENABLED || "true") === "true";
 
 const OPEN_METEO_POSTAL_CODE = process.env.OPEN_METEO_POSTAL_CODE || "";
 const OPEN_METEO_COUNTRY = process.env.OPEN_METEO_COUNTRY || "CA";
+const OPEN_METEO_CITY = process.env.OPEN_METEO_CITY || "";
+const OPEN_METEO_LAT = process.env.OPEN_METEO_LAT || "";
+const OPEN_METEO_LON = process.env.OPEN_METEO_LON || "";
 
 const SPOTIFY_API = "https://api.spotify.com/v1";
 const SPOTIFY_AUTH_URL = "https://accounts.spotify.com/authorize";
@@ -38,6 +41,8 @@ const SCOPES = [
   "user-modify-playback-state",
   "user-read-currently-playing",
   "user-read-recently-played",
+  "user-library-read",
+  "user-library-modify",
   "playlist-read-private",
 ].join(" ");
 
@@ -380,6 +385,19 @@ app.post("/previous", async (req, res) => {
   return res.status(response.status).json(response.data);
 });
 
+app.put("/seek", async (req, res) => {
+  const { positionMs, deviceId } = req.body || {};
+  const safePosition = Math.max(0, Number(positionMs || 0));
+  const deviceParam = deviceId ? `&device_id=${encodeURIComponent(deviceId)}` : "";
+  const response = await spotifyFetch(
+    `/me/player/seek?position_ms=${safePosition}${deviceParam}`,
+    {
+      method: "PUT",
+    },
+  );
+  return res.status(response.status).json(response.data);
+});
+
 app.put("/shuffle", async (req, res) => {
   const { state, deviceId } = req.body || {};
   const deviceParam = deviceId ? `&device_id=${encodeURIComponent(deviceId)}` : "";
@@ -423,14 +441,41 @@ app.get("/artist/:id", async (req, res) => {
   return res.status(response.status).json(response.data);
 });
 
+app.get("/me/tracks/contains", async (req, res) => {
+  const ids = req.query.ids;
+  if (!ids) {
+    return res.status(400).json({ error: "ids query required" });
+  }
+  const response = await spotifyFetch(
+    `/me/tracks/contains?ids=${encodeURIComponent(ids || "")}`,
+  );
+  return res.status(response.status).json(response.data);
+});
+
+app.put("/me/tracks", async (req, res) => {
+  const { ids } = req.body || {};
+  const response = await spotifyFetch(`/me/tracks?ids=${encodeURIComponent(ids || "")}`, {
+    method: "PUT",
+  });
+  return res.status(response.status).json(response.data);
+});
+
+app.delete("/me/tracks", async (req, res) => {
+  const { ids } = req.body || {};
+  const response = await spotifyFetch(`/me/tracks?ids=${encodeURIComponent(ids || "")}`, {
+    method: "DELETE",
+  });
+  return res.status(response.status).json(response.data);
+});
+
 // --- Weather (Open-Meteo) --------------------------------------------------
 let weatherCache = {
   data: null,
   lastFetchedAt: 0,
 };
 
-const weatherCodeMap = (code) => {
-  if ([0].includes(code)) return { label: "Clear", icon: "sun" };
+const weatherCodeMap = (code, isDay) => {
+  if ([0].includes(code)) return { label: "Clear", icon: isDay ? "sun" : "moon" };
   if ([1, 2, 3].includes(code)) return { label: "Cloudy", icon: "cloud" };
   if ([45, 48].includes(code)) return { label: "Fog", icon: "cloud-fog" };
   if ([51, 53, 55, 56, 57].includes(code))
@@ -454,31 +499,50 @@ app.get("/weather", async (req, res) => {
   }
 
   try {
-    const geoResponse = await fetch(
-      `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(
-        OPEN_METEO_POSTAL_CODE,
-      )}&count=1&language=en&format=json&country=${OPEN_METEO_COUNTRY}`,
-    );
-    const geoData = await geoResponse.json();
-    const location = geoData?.results?.[0];
+    let latitude = Number(OPEN_METEO_LAT);
+    let longitude = Number(OPEN_METEO_LON);
+    let locationLabel = "Toronto";
+    let isDay = true;
 
-    if (!location) {
-      return res.status(404).json({ error: "Postal code not found." });
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+      const geoResponse = await fetch(
+        `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(
+          OPEN_METEO_POSTAL_CODE,
+        )}&count=1&language=en&format=json&country=${OPEN_METEO_COUNTRY}`,
+      );
+      const geoData = await geoResponse.json();
+      const location = geoData?.results?.[0];
+
+      if (!location) {
+        return res.status(404).json({ error: "Postal code not found." });
+      }
+
+      latitude = location.latitude;
+      longitude = location.longitude;
+      locationLabel = "Toronto";
+    } else {
+      const reverseResponse = await fetch(
+        `https://geocoding-api.open-meteo.com/v1/reverse?latitude=${latitude}&longitude=${longitude}&count=1&language=en&format=json`,
+      );
+      const reverseData = await reverseResponse.json();
+      locationLabel = "Toronto";
     }
 
     const forecastResponse = await fetch(
-      `https://api.open-meteo.com/v1/forecast?latitude=${location.latitude}&longitude=${location.longitude}&current=temperature_2m,weather_code`,
+      `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,weather_code,is_day&temperature_unit=celsius`,
     );
     const forecastData = await forecastResponse.json();
     const current = forecastData?.current;
-    const condition = weatherCodeMap(current?.weather_code);
+    isDay = current?.is_day === 1;
+    const condition = weatherCodeMap(current?.weather_code, isDay);
 
     const payload = {
       temperature: current?.temperature_2m ?? null,
       weather_code: current?.weather_code ?? null,
+      is_day: current?.is_day ?? null,
       label: condition.label,
       icon: condition.icon,
-      location: location.name,
+      location: locationLabel,
       last_updated: now,
     };
 

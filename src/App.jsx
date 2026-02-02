@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Background from "./components/Background";
 import PlayerScreen from "./components/PlayerScreen";
 import IdleScreen from "./components/IdleScreen";
@@ -19,6 +19,8 @@ const App = () => {
   const [activeScreen, setActiveScreen] = useState("player");
   const [playbackTarget, setPlaybackTarget] = useState("iphone");
   const [now, setNow] = useState(new Date());
+  const [navHeight, setNavHeight] = useState(0);
+  const navRef = useRef(null);
   const { toggleVisibility, addLog } = useLogs();
   const webPlayback = useWebPlayback();
   const {
@@ -31,6 +33,8 @@ const App = () => {
     defaultDeviceId,
     resolvedTargetDeviceId,
     devices,
+    isTrackLiked,
+    likedMap,
   } = useSpotify({
     playbackTarget,
     targetDeviceId: webPlayback.deviceId,
@@ -47,6 +51,18 @@ const App = () => {
     return () => clearInterval(interval);
   }, []);
 
+  useLayoutEffect(() => {
+    if (!navRef.current) return;
+    const update = () => {
+      const rect = navRef.current.getBoundingClientRect();
+      setNavHeight(rect.height || 0);
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(navRef.current);
+    return () => observer.disconnect();
+  }, []);
+
   const toggleFullscreen = useCallback(() => {
     if (document.fullscreenElement) {
       document.exitFullscreen();
@@ -57,7 +73,7 @@ const App = () => {
 
   useEffect(() => {
     const onKeyDown = (event) => {
-      if (event.key === "F11") {
+      if (event.key === "f") {
         event.preventDefault();
         toggleFullscreen();
       }
@@ -78,6 +94,8 @@ const App = () => {
   const defaultDeviceLabel =
     import.meta.env.VITE_DEFAULT_DEVICE_NAME || "Default device";
   const activeDeviceName = nowPlaying?.device?.name || null;
+  const supportsVolume = Boolean(nowPlaying?.device?.supports_volume);
+  const volumePercent = nowPlaying?.device?.volume_percent ?? 50;
   const isDefaultDeviceAvailable =
     Boolean(defaultDeviceId) ||
     activeDeviceName?.toLowerCase() === defaultDeviceLabel.toLowerCase();
@@ -129,15 +147,17 @@ const App = () => {
         artist={artist}
         controls={controls}
         targetDeviceId={resolvedTargetDeviceId}
+        isTrackLiked={isTrackLiked}
+        likedMap={likedMap}
       />
     );
   }, [activeScreen, now, weather, previous, nowPlaying, queue, artist, controls]);
 
   if (!status.authenticated) {
     return (
-      <div className="relative min-h-screen overflow-hidden">
+      <div className="relative h-screen overflow-hidden">
         <Background />
-        <div className="relative z-10 flex min-h-screen items-center justify-center">
+        <div className="relative z-10 flex h-full items-center justify-center">
           <div className="rounded-2xl border border-white/20 bg-black/40 p-8 text-center">
             <h1 className="text-2xl font-semibold text-white">Connect Spotify</h1>
             <p className="mt-2 text-sm text-white/70">
@@ -156,13 +176,14 @@ const App = () => {
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden">
-      <Background imageUrl={nowPlaying?.item?.album?.images?.[0]?.url} />
-      <div className="relative z-10 flex min-h-screen flex-col">
+    <div className="relative h-screen overflow-hidden">
+      <Background imageUrl={nowPlaying?.item?.album?.images?.[2]?.url} />
+      <div className="relative z-10 flex h-full flex-col">
         <div key={activeScreen} className="flex-1 transition-opacity duration-500">
           {screen}
         </div>
         <NavBar
+          navRef={navRef}
           activeScreen={activeScreen}
           onNavigate={setActiveScreen}
           onToggleFullscreen={toggleFullscreen}
@@ -181,6 +202,9 @@ const App = () => {
           activeDeviceName={activeDeviceName}
           devices={devices}
           onDeviceSelect={handleDeviceSelect}
+          supportsVolume={supportsVolume}
+          volumePercent={volumePercent}
+          onVolumeChange={(value) => controls.volume(value, resolvedTargetDeviceId)}
         />
       </div>
       <LogPanel />

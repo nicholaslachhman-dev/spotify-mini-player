@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { apiGet, apiPost, apiPut } from "../lib/api";
+import { apiDelete, apiGet, apiPost, apiPut } from "../lib/api";
 import { useInterval } from "./useInterval";
 import { useLogs } from "../context/LogContext";
 
@@ -14,6 +14,8 @@ export const useSpotify = ({ playbackTarget = "iphone", targetDeviceId = null } 
   const [queue, setQueue] = useState(null);
   const [previous, setPrevious] = useState(null);
   const [artist, setArtist] = useState(null);
+  const [isTrackLiked, setIsTrackLiked] = useState(false);
+  const [likedMap, setLikedMap] = useState({});
   const [devices, setDevices] = useState([]);
   const { addLog } = useLogs();
   const lastTransferRef = useRef(0);
@@ -67,6 +69,38 @@ export const useSpotify = ({ playbackTarget = "iphone", targetDeviceId = null } 
     }
   };
 
+  const fetchLikedStatus = async (trackId, trackType) => {
+    if (!trackId || trackType !== "track") {
+      setIsTrackLiked(false);
+      return;
+    }
+    const response = await apiGet(`/me/tracks/contains?ids=${trackId}`);
+    if (response.status === 200 && Array.isArray(response.data)) {
+      setIsTrackLiked(Boolean(response.data[0]));
+      return;
+    }
+    setIsTrackLiked(false);
+  };
+
+  const fetchLikedMap = async (trackIds) => {
+    const ids = (trackIds || []).filter(Boolean);
+    if (ids.length === 0) {
+      setLikedMap({});
+      return;
+    }
+
+    const response = await apiGet(`/me/tracks/contains?ids=${ids.join(",")}`);
+    if (response.status === 200 && Array.isArray(response.data)) {
+      const nextMap = {};
+      ids.forEach((id, index) => {
+        nextMap[id] = Boolean(response.data[index]);
+      });
+      setLikedMap(nextMap);
+    } else {
+      setLikedMap({});
+    }
+  };
+
   useEffect(() => {
     refreshStatus();
     fetchDevices();
@@ -115,7 +149,15 @@ export const useSpotify = ({ playbackTarget = "iphone", targetDeviceId = null } 
     const artistId = nowPlaying?.item?.artists?.[0]?.id;
     setArtist(null);
     fetchTrackDetails(trackId, artistId, trackType);
+    fetchLikedStatus(trackId, trackType);
   }, [nowPlaying?.item?.id, nowPlaying?.item?.artists]);
+
+  useEffect(() => {
+    const upNextIds = (queue?.queue || []).slice(0, 3).map((item) => item?.id);
+    const previousId = previous?.id ? [previous.id] : [];
+    const ids = [...upNextIds, ...previousId];
+    fetchLikedMap(ids);
+  }, [queue, previous]);
 
   const defaultDeviceId = useMemo(() => {
     const target = devices.find(
@@ -173,8 +215,23 @@ export const useSpotify = ({ playbackTarget = "iphone", targetDeviceId = null } 
           deviceId: deviceId || resolvedTargetDeviceId,
         }),
       volume: (value, deviceId) => apiPut("/volume", { volume: value, deviceId }),
+      seek: (positionMs, deviceId) =>
+        apiPut("/seek", {
+          positionMs,
+          deviceId: deviceId || resolvedTargetDeviceId,
+        }),
+      toggleLike: async (trackId) => {
+        if (!trackId) return;
+        if (isTrackLiked) {
+          await apiDelete("/me/tracks", { ids: trackId });
+          setIsTrackLiked(false);
+        } else {
+          await apiPut("/me/tracks", { ids: trackId });
+          setIsTrackLiked(true);
+        }
+      },
     }),
-    [resolvedTargetDeviceId],
+    [resolvedTargetDeviceId, isTrackLiked],
   );
 
   return {
@@ -186,6 +243,8 @@ export const useSpotify = ({ playbackTarget = "iphone", targetDeviceId = null } 
     devices,
     defaultDeviceId,
     resolvedTargetDeviceId,
+    isTrackLiked,
+    likedMap,
     refreshStatus,
     fetchDevices,
     controls,

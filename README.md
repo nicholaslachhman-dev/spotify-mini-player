@@ -10,6 +10,10 @@ A lightweight Spotify mini player built with React, Tailwind CSS, and a small No
 - Player, Idle, and Playlist (placeholder) screens with bottom navigation
 - Web Playback SDK mode to play directly in this app (always-available Connect device)
 - Idle screen shows time (12-hour with seconds), date, and Open-Meteo weather
+- Device dropdown to select the active playback device
+- Click-to-seek on the progress bar
+- Like/unlike current track with the Circle icon
+- Log panel with draggable/resizable window and Nav Bar toggle
 - Keyboard shortcut to toggle logs: `Ctrl + Shift + L`
 - Frameless + Electron-ready setup (packaging later)
 
@@ -32,7 +36,7 @@ copy .env.example .env
 - `SPOTIFY_CLIENT_ID` and `SPOTIFY_CLIENT_SECRET`
 - `SPOTIFY_REDIRECT_URI` set to `http://127.0.0.1:3001/callback`
 - `SPOTIFY_DEVICE_NAME` set to `Nicholas's iPhone`
-- `OPEN_METEO_POSTAL_CODE` set to `M5J 2M4`
+- `OPEN_METEO_LAT` and `OPEN_METEO_LON` set to `43.64` and `-79.38`
 
 3) Install deps:
 ```
@@ -52,8 +56,12 @@ npm run dev
 - Vite dev server runs on `http://localhost:5173`.
 - Token cache is stored in `server/token.json` and can be cleared from the Idle screen.
 - Web Playback SDK requires Spotify Premium and updated scopes (re-login).
+- Volume slider shows only when the active device supports volume control.
+- Weather label is currently hard-coded to Toronto.
 
 ## Versions
+- 0.2.2: Added like/unlike, click-to-seek, album art/background transitions, and weather fixes.
+- 0.2.1: Added device dropdown, log panel controls, and volume slider improvements.
 - 0.2.0: Added Web Playback SDK mode and playback target toggle.
 - 0.1.1: Removed BPM/audio features to avoid Spotify 403.
 - 0.1.0: Initial scaffold with Spotify auth, player layout, and idle screen.

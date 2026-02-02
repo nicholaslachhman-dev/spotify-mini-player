@@ -6,11 +6,13 @@ import {
   Smartphone,
   Unplug,
   TerminalSquare,
+  Volume2,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 // Bottom navigation bar shared across screens.
 const NavBar = ({
+  navRef,
   activeScreen,
   onNavigate,
   onToggleFullscreen,
@@ -26,7 +28,12 @@ const NavBar = ({
   activeDeviceName,
   devices,
   onDeviceSelect,
+  supportsVolume,
+  volumePercent,
+  onVolumeChange,
 }) => {
+  const [localVolume, setLocalVolume] = useState(volumePercent ?? 50);
+  const sendTimerRef = useRef(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
 
@@ -59,8 +66,25 @@ const NavBar = ({
     };
   }, [menuOpen]);
 
+  useEffect(() => {
+    if (!supportsVolume) return;
+    setLocalVolume(volumePercent ?? 50);
+  }, [supportsVolume, volumePercent]);
+
+  const scheduleVolumeSend = (nextValue) => {
+    if (sendTimerRef.current) {
+      clearTimeout(sendTimerRef.current);
+    }
+    sendTimerRef.current = setTimeout(() => {
+      onVolumeChange?.(nextValue);
+    }, 200);
+  };
+
   return (
-    <div className="flex items-center justify-between border-t border-white/10 bg-black/30 px-6 py-3">
+    <div
+      ref={navRef}
+      className="flex items-center justify-between border-t border-white/10 bg-black/30 px-6 py-3"
+    >
       <div className="flex items-center gap-3">
         <button
           className={buttonClass("idle")}
@@ -121,7 +145,25 @@ const NavBar = ({
         <div className="text-2xl text-white/70">{currentTimeLabel}</div>
       </div>
 
-      <div className="relative" ref={menuRef}>
+      <div className="flex items-center gap-4">
+        {supportsVolume && (
+          <div className="flex items-center gap-2">
+            <Volume2 className="h-4 w-4 text-white/60" />
+            <input
+              type="range"
+              min="0"
+              max="100"
+              value={localVolume}
+              onChange={(event) => {
+                const nextValue = Number(event.target.value);
+                setLocalVolume(nextValue);
+                scheduleVolumeSend(nextValue);
+              }}
+              className="h-1 w-24 accent-white"
+            />
+          </div>
+        )}
+        <div className="relative" ref={menuRef}>
         <button
           className="flex items-center gap-2 text-base"
           onClick={() => setMenuOpen((prev) => !prev)}
@@ -199,6 +241,7 @@ const NavBar = ({
             </div>
           </div>
         )}
+        </div>
       </div>
     </div>
   );

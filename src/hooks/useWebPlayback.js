@@ -40,7 +40,7 @@ export const useWebPlayback = () => {
         const response = await apiGet("/token");
         cb(response.data?.access_token || "");
       },
-      volume: 0.8,
+      volume: 0.2,
     });
 
     player.addListener("ready", ({ device_id }) => {
