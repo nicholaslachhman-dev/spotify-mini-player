@@ -22,6 +22,7 @@ const PlayerScreen = ({
   targetDeviceId,
   isTrackLiked,
   likedMap,
+  playlistName,
 }) => {
   const track = nowPlaying?.item || null;
   const isPlaying = Boolean(nowPlaying?.is_playing);
@@ -178,11 +179,11 @@ const PlayerScreen = ({
           </div> */}
           
           <div className="flex justify-end">
-            <button onClick={() => controls.toggleLike(track?.id)}>
+            <button onClick={() => controls.toggleLike(track?.id)} className="like-btn">
               {isTrackLiked ? (
-                <CircleCheck className="h-8 w-8 text-[#1DB954]" />
+                <CircleCheck className="like-icon h-8 w-8 text-[#1DB954]" />
               ) : (
-                <CirclePlus className="h-8 w-8" />
+                <CirclePlus className="like-icon h-8 w-8" />
               )}
             </button>
           </div>
@@ -193,37 +194,37 @@ const PlayerScreen = ({
               <span>-{formatMs(remainingMs)}</span>
             </div>
             <div
-              className="relative mt-2 h-1 cursor-pointer rounded-full bg-white/20"
+              className="seek-bar relative mt-2 h-1 cursor-pointer rounded-full bg-white/20"
               onClick={handleSeek}
             >
               <div
-                className="absolute h-1 rounded-full bg-white"
+                className="seek-fill absolute h-1 rounded-full bg-white"
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
           </div>
 
           <div className="flex items-center justify-center gap-8 py-2 text-white">
-            <button onClick={() => controls.shuffle(!shuffleState, deviceId)}>
-              <Shuffle className={`h-6 w-6 ${shuffleState ? "text-white" : "text-white/60"}`} />
+            <button onClick={() => controls.shuffle(!shuffleState, deviceId)} className="control-btn">
+              <Shuffle className={`control-icon h-6 w-6 ${shuffleState ? "text-white" : "text-white/60"}`} />
             </button>
-            <button onClick={() => controls.previous(deviceId)}>
-              <SkipBack className="h-8 w-8" />
+            <button onClick={() => controls.previous(deviceId)} className="control-btn">
+              <SkipBack className="control-icon h-8 w-8" />
             </button>
             <button
-              className="flex h-20 w-20 items-center justify-center rounded-full border-4 border-white/50"
+              className="primary-btn flex h-20 w-20 items-center justify-center rounded-full border-4 border-white/50"
               onClick={() =>
                 isPlaying ? controls.pause(deviceId) : controls.play(deviceId)
               }
             >
               {isPlaying ? (
-                <Pause className="h-8 w-8" />
+                <Pause className="primary-icon h-8 w-8" />
               ) : (
-                <Play className="h-8 w-8" />
+                <Play className="primary-icon h-8 w-8" />
               )}
             </button>
-            <button onClick={() => controls.next(deviceId)}>
-              <SkipForward className="h-8 w-8" />
+            <button onClick={() => controls.next(deviceId)} className="control-btn">
+              <SkipForward className="control-icon h-8 w-8" />
             </button>
             <button
               onClick={() =>
@@ -232,8 +233,9 @@ const PlayerScreen = ({
                   deviceId,
                 )
               }
+              className="control-btn"
             >
-              <Repeat className={`h-6 w-6 ${repeatState !== "off" ? "text-white" : "text-white/60"}`} />
+              <Repeat className={`control-icon h-6 w-6 ${repeatState !== "off" ? "text-white" : "text-white/60"}`} />
             </button>
           </div>
 
@@ -245,6 +247,9 @@ const PlayerScreen = ({
             <h2 className="text-sm uppercase tracking-[0.2em] text-white/60">
               Up next
             </h2>
+            <div className="mt-1 text-sm text-white/50">
+              {playlistName || "no playlist"}
+            </div>
             <div className="mt-4 space-y-4">
               {upNext.length === 0 && (
                 <p className="text-sm text-white/40">No upcoming tracks.</p>

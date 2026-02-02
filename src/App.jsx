@@ -13,6 +13,7 @@ import { useLogs } from "./context/LogContext";
 import { apiDelete, apiPut } from "./lib/api";
 
 const IDLE_TIMEOUT_MS = Number(import.meta.env.VITE_IDLE_TIMEOUT_MS || 60000);
+const PAUSE_TO_IDLE_MS = Number(import.meta.env.VITE_PAUSE_TO_IDLE_MS || 10000);
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:3001";
 
 const App = () => {
@@ -35,6 +36,7 @@ const App = () => {
     devices,
     isTrackLiked,
     likedMap,
+    playlistName,
   } = useSpotify({
     playbackTarget,
     targetDeviceId: webPlayback.deviceId,
@@ -50,6 +52,14 @@ const App = () => {
     const interval = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (nowPlaying?.is_playing) return;
+    const timer = setTimeout(() => {
+      setActiveScreen("idle");
+    }, PAUSE_TO_IDLE_MS);
+    return () => clearTimeout(timer);
+  }, [nowPlaying?.is_playing]);
 
   useLayoutEffect(() => {
     if (!navRef.current) return;
@@ -149,6 +159,7 @@ const App = () => {
         targetDeviceId={resolvedTargetDeviceId}
         isTrackLiked={isTrackLiked}
         likedMap={likedMap}
+        playlistName={playlistName}
       />
     );
   }, [activeScreen, now, weather, previous, nowPlaying, queue, artist, controls]);
@@ -179,7 +190,7 @@ const App = () => {
     <div className="relative h-screen overflow-hidden">
       <Background imageUrl={nowPlaying?.item?.album?.images?.[2]?.url} />
       <div className="relative z-10 flex h-full flex-col">
-        <div key={activeScreen} className="flex-1 transition-opacity duration-500">
+        <div key={activeScreen} className="screen-fade flex-1">
           {screen}
         </div>
         <NavBar
@@ -188,6 +199,7 @@ const App = () => {
           onNavigate={setActiveScreen}
           onToggleFullscreen={toggleFullscreen}
           onToggleLogs={toggleVisibility}
+          onClearToken={clearToken}
           currentTimeLabel={now.toLocaleTimeString("en-US", {
             hour: "numeric",
             minute: "2-digit",

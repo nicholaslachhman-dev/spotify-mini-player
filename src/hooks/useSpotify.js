@@ -16,6 +16,7 @@ export const useSpotify = ({ playbackTarget = "iphone", targetDeviceId = null } 
   const [artist, setArtist] = useState(null);
   const [isTrackLiked, setIsTrackLiked] = useState(false);
   const [likedMap, setLikedMap] = useState({});
+  const [playlistName, setPlaylistName] = useState(null);
   const [devices, setDevices] = useState([]);
   const { addLog } = useLogs();
   const lastTransferRef = useRef(0);
@@ -153,6 +154,54 @@ export const useSpotify = ({ playbackTarget = "iphone", targetDeviceId = null } 
   }, [nowPlaying?.item?.id, nowPlaying?.item?.artists]);
 
   useEffect(() => {
+    const resolvePlaylistName = async () => {
+      const context = nowPlaying?.context;
+      const contextUri = context?.uri || "";
+      const isCollectionContext =
+        context?.type === "collection" ||
+        contextUri.startsWith("spotify:collection:");
+      const isPlaylistContext =
+        context?.type === "playlist" || contextUri.includes("spotify:playlist:");
+
+      if (isCollectionContext) {
+        setPlaylistName("Liked Songs");
+        return;
+      }
+
+      if (!context || !contextUri || !isPlaylistContext) {
+        setPlaylistName(null);
+        return;
+      }
+
+      const playlistId = contextUri.split(":").pop();
+      if (!playlistId) {
+        setPlaylistName(null);
+        return;
+      }
+
+      const response = await apiGet(`/playlist/${playlistId}`);
+      if (response.status === 200) {
+        setPlaylistName(response.data?.name || null);
+        return;
+      }
+
+      // Fallback: search the user's playlists for a matching id (covers some edge cases).
+      const playlistsResponse = await apiGet("/me/playlists?limit=50");
+      if (playlistsResponse.status === 200) {
+        const match = playlistsResponse.data?.items?.find(
+          (item) => item?.id === playlistId,
+        );
+        setPlaylistName(match?.name || "Spotify Playlist");
+        return;
+      }
+
+      setPlaylistName("Spotify Playlist");
+    };
+
+    resolvePlaylistName();
+  }, [nowPlaying?.context?.uri, nowPlaying?.context?.type]);
+
+  useEffect(() => {
     const upNextIds = (queue?.queue || []).slice(0, 3).map((item) => item?.id);
     const previousId = previous?.id ? [previous.id] : [];
     const ids = [...upNextIds, ...previousId];
@@ -245,6 +294,7 @@ export const useSpotify = ({ playbackTarget = "iphone", targetDeviceId = null } 
     resolvedTargetDeviceId,
     isTrackLiked,
     likedMap,
+    playlistName,
     refreshStatus,
     fetchDevices,
     controls,

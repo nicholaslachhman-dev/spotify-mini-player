@@ -20,3 +20,71 @@ body {
 #root {
   min-height: 100vh;
 }
+
+/* Screen fade transitions (Player/Idle/Playlist). */
+.screen-fade {
+  animation: screenFade 250ms ease-in-out;
+}
+
+@keyframes screenFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Player control hover styles (minimal + consistent). */
+.control-btn {
+  transition: transform 150ms ease, opacity 150ms ease;
+}
+
+.control-btn:hover .control-icon {
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.control-btn:hover {
+  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.35));
+  transform: scale(1.03);
+}
+
+.primary-btn {
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+.primary-btn:hover {
+  transform: scale(1.01);
+  box-shadow: 0 0 18px rgba(255, 255, 255, 0.18);
+}
+
+.primary-btn:hover .primary-icon {
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.like-btn {
+  transition: transform 150ms ease, opacity 150ms ease;
+}
+
+.like-btn:hover {
+  opacity: 0.95;
+}
+
+.like-btn:hover .like-icon {
+  color: #1db954;
+  filter: drop-shadow(0 0 8px rgba(29, 185, 84, 0.6));
+  transform: scale(1.03);
+}
+
+.seek-bar {
+  transition: height 150ms ease, background-color 150ms ease;
+}
+
+.seek-bar:hover {
+  /* height: 0.35rem; */
+  background-color: rgba(255, 255, 255, 0.28);
+}
+
+.seek-bar:hover .seek-fill {
+  background-color: rgba(255, 255, 255, 0.95);
+}

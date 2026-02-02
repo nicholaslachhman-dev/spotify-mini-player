@@ -441,6 +441,19 @@ app.get("/artist/:id", async (req, res) => {
   return res.status(response.status).json(response.data);
 });
 
+app.get("/playlist/:id", async (req, res) => {
+  const response = await spotifyFetch(
+    `/playlists/${req.params.id}?market=from_token&fields=name`,
+  );
+  return res.status(response.status).json(response.data);
+});
+
+app.get("/me/playlists", async (req, res) => {
+  const limit = req.query.limit || "20";
+  const response = await spotifyFetch(`/me/playlists?limit=${limit}`);
+  return res.status(response.status).json(response.data);
+});
+
 app.get("/me/tracks/contains", async (req, res) => {
   const ids = req.query.ids;
   if (!ids) {

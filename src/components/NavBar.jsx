@@ -7,6 +7,7 @@ import {
   Unplug,
   TerminalSquare,
   Volume2,
+  BrushCleaning,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
@@ -17,6 +18,7 @@ const NavBar = ({
   onNavigate,
   onToggleFullscreen,
   onToggleLogs,
+  onClearToken,
   currentTimeLabel,
   isDefaultDeviceAvailable,
   defaultDeviceLabel,
@@ -114,6 +116,14 @@ const NavBar = ({
           }}
         >
           <TerminalSquare className="h-5 w-5" />
+        </button>
+        <button
+          type="button"
+          className={buttonClass("clear-token")}
+          onClick={onClearToken}
+          title="Clear token cache"
+        >
+          <BrushCleaning className="h-5 w-5" />
         </button>
         <button className={buttonClass("fullscreen")} onClick={onToggleFullscreen}>
           <Monitor className="h-5 w-5" />
